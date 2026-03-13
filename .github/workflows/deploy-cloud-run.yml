@@ -1,0 +1,116 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: us-east1
+  SERVICE_NAME: data-storyteller-quest
+  ARTIFACT_REPO: webapps
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROJECT_ID="${{ vars.GCP_PROJECT_ID }}"
+          if [ -z "$PROJECT_ID" ]; then PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"; fi
+
+          PROJECT_NUMBER="${{ vars.GCP_PROJECT_NUMBER }}"
+          if [ -z "$PROJECT_NUMBER" ]; then PROJECT_NUMBER="${{ secrets.GCP_PROJECT_NUMBER }}"; fi
+
+          WIF_PROVIDER="${{ vars.GCP_WIF_PROVIDER }}"
+          if [ -z "$WIF_PROVIDER" ]; then WIF_PROVIDER="${{ secrets.GCP_WIF_PROVIDER }}"; fi
+
+          DEPLOYER_SA="${{ vars.GCP_DEPLOYER_SA_EMAIL }}"
+          if [ -z "$DEPLOYER_SA" ]; then DEPLOYER_SA="${{ secrets.GCP_DEPLOYER_SA_EMAIL }}"; fi
+
+          RUNTIME_SA="${{ vars.GCP_RUNTIME_SA_EMAIL }}"
+          if [ -z "$RUNTIME_SA" ]; then RUNTIME_SA="${{ secrets.GCP_RUNTIME_SA_EMAIL }}"; fi
+          if [ -z "$RUNTIME_SA" ] && [ -n "$PROJECT_ID" ]; then
+            RUNTIME_SA="cloudrun-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
+          fi
+
+          if [ -z "$PROJECT_ID" ] || [ -z "$PROJECT_NUMBER" ] || [ -z "$WIF_PROVIDER" ] || [ -z "$DEPLOYER_SA" ]; then
+            echo "Missing required configuration."
+            echo "Set GCP_PROJECT_ID, GCP_PROJECT_NUMBER, GCP_WIF_PROVIDER, and GCP_DEPLOYER_SA_EMAIL as repo vars or secrets."
+            exit 1
+          fi
+
+          if [[ "$WIF_PROVIDER" != projects/*/locations/global/workloadIdentityPools/*/providers/* ]]; then
+            echo "GCP_WIF_PROVIDER must be the full provider resource name."
+            echo "Expected: projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID"
+            exit 1
+          fi
+
+          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+          echo "PROJECT_NUMBER=$PROJECT_NUMBER" >> "$GITHUB_ENV"
+          echo "WIF_PROVIDER=$WIF_PROVIDER" >> "$GITHUB_ENV"
+          echo "DEPLOYER_SA=$DEPLOYER_SA" >> "$GITHUB_ENV"
+          echo "RUNTIME_SA=$RUNTIME_SA" >> "$GITHUB_ENV"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker auth for Artifact Registry
+        shell: bash
+        run: gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and push container image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${SERVICE_NAME}:${GITHUB_SHA}"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+          docker build --tag "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+
+      - name: Deploy Cloud Run service
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_ARGS=(
+            "$SERVICE_NAME"
+            "--image" "$IMAGE_URI"
+            "--region" "$REGION"
+            "--platform" "managed"
+            "--allow-unauthenticated"
+            "--set-secrets" "GEMINI_API_KEY=gemini-api-key:latest"
+            "--set-env-vars" "NODE_ENV=production"
+          )
+
+          if [ -n "$RUNTIME_SA" ]; then
+            DEPLOY_ARGS+=("--service-account" "$RUNTIME_SA")
+          fi
+
+          gcloud run deploy "${DEPLOY_ARGS[@]}"
+
+      - name: Print service URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+          echo "Cloud Run URL: $SERVICE_URL"
