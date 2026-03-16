@@ -219,7 +219,7 @@ export default function App() {
                   <p className="text-lg leading-relaxed text-slate-300">{currentStep.context}</p>
                 </div>
 
-                <div className="bg-slate-950 rounded-xl p-4 sm:p-6 border border-slate-800 mb-8 overflow-hidden">
+                <div className="bg-slate-950 rounded-xl p-4 sm:p-6 border border-slate-800 mb-8">
                   <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">Data Summary</h3>
                   <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
                   
