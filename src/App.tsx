@@ -25,6 +25,7 @@ export default function App() {
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
+  const hasRevealedAnalysis = showFeedback;
 
   const startGame = () => {
     setGameState('SCENARIO');
@@ -161,43 +162,54 @@ export default function App() {
                 </div>
 
                 <div className="bg-slate-950 rounded-xl p-6 border border-slate-800 mb-8">
-                  <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">Data Summary</h3>
-                  <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
-                  
-                  {currentStep.chartData && currentStep.chartType === 'BAR' && (
-                    <div className="h-64 w-full mt-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={currentStep.chartData}>
-                          <XAxis dataKey="name" stroke="#64748b" />
-                          <YAxis stroke="#64748b" />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                            itemStyle={{ color: '#e2e8f0' }}
-                          />
-                          <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                          <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
+                  <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">
+                    {hasRevealedAnalysis ? 'Data Summary' : 'Analysis Reveal'}
+                  </h3>
 
-                  {currentStep.chartData && currentStep.chartType === 'LINE' && (
-                    <div className="h-64 w-full mt-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={currentStep.chartData}>
-                          <XAxis dataKey="day" stroke="#64748b" />
-                          <YAxis stroke="#64748b" />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                            itemStyle={{ color: '#e2e8f0' }}
-                          />
-                          <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                          <Line type="monotone" dataKey="Completed Onboarding" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                          <Line type="monotone" dataKey="Skipped Onboarding" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                  {hasRevealedAnalysis ? (
+                    <>
+                      <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
+
+                      {currentStep.chartData && currentStep.chartType === 'BAR' && (
+                        <div className="h-64 w-full mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={currentStep.chartData}>
+                              <XAxis dataKey="name" stroke="#64748b" />
+                              <YAxis stroke="#64748b" />
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                itemStyle={{ color: '#e2e8f0' }}
+                              />
+                              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                              <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+
+                      {currentStep.chartData && currentStep.chartType === 'LINE' && (
+                        <div className="h-64 w-full mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={currentStep.chartData}>
+                              <XAxis dataKey="day" stroke="#64748b" />
+                              <YAxis stroke="#64748b" />
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                itemStyle={{ color: '#e2e8f0' }}
+                              />
+                              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                              <Line type="monotone" dataKey="Completed Onboarding" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+                              <Line type="monotone" dataKey="Skipped Onboarding" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-slate-400 leading-relaxed">
+                      Pick an answer to reveal the coached analysis and supporting visualization for this scenario.
+                    </p>
                   )}
                 </div>
 
