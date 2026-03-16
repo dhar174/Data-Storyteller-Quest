@@ -1,15 +1,68 @@
-import { useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { GameState, Scenario, ScenarioStep, BossEvaluation } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { ArrowRight, CheckCircle, XCircle, Trophy, AlertCircle, Play, ChevronRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from 'recharts';
+import { ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+const SCENARIO_CARD_ENTRANCE_MS = 220;
+
+function ChartFrame({ children }: { children: (size: { width: number; height: number }) => ReactNode }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      setSize((prev) => {
+        if (prev.width === width && prev.height === height) {
+          return prev;
+        }
+        return { width, height };
+      });
+    };
+
+    updateSize();
+
+    let resizeObserver: ResizeObserver | null = null;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateSize);
+      resizeObserver.observe(container);
+    } else {
+      window.addEventListener('resize', updateSize);
+    }
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', updateSize);
+      }
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className="h-56 sm:h-64 w-full min-w-0 mt-4">
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div className="h-full w-full rounded-lg border border-slate-800/80 bg-slate-900/40" />
+      )}
+    </div>
+  );
 }
 
 export default function App() {
@@ -22,10 +75,28 @@ export default function App() {
   const [bossInput, setBossInput] = useState('');
   const [bossEvaluation, setBossEvaluation] = useState<BossEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showScenarioChart, setShowScenarioChart] = useState(false);
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
   const hasRevealedAnalysis = showFeedback;
+
+  useEffect(() => {
+    if (gameState !== 'SCENARIO' || !currentStep?.chartData) {
+      setShowScenarioChart(false);
+      return;
+    }
+
+    setShowScenarioChart(false);
+    // Let the scenario card finish its entrance animation before Recharts measures.
+    const timeoutId = window.setTimeout(() => {
+      setShowScenarioChart(true);
+    }, SCENARIO_CARD_ENTRANCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [currentStep?.id, currentStep?.chartData, gameState]);
 
   const startGame = () => {
     setGameState('SCENARIO');
@@ -161,55 +232,72 @@ export default function App() {
                   <p className="text-lg leading-relaxed text-slate-300">{currentStep.context}</p>
                 </div>
 
-                <div className="bg-slate-950 rounded-xl p-6 border border-slate-800 mb-8">
-                  <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">
-                    {hasRevealedAnalysis ? 'Data Summary' : 'Analysis Reveal'}
-                  </h3>
+                <div className="bg-slate-950 rounded-xl p-4 sm:p-6 border border-slate-800 mb-8">
+                  <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">Data Summary</h3>
+                  <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
+                  
+                  {!showScenarioChart && currentStep.chartData && (
+                    <div className="h-56 sm:h-64 w-full mt-4 rounded-lg border border-slate-800/80 bg-slate-900/40" />
+                  )}
 
-                  {hasRevealedAnalysis ? (
-                    <>
-                      <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
-
-                      {currentStep.chartData && currentStep.chartType === 'BAR' && (
-                        <div className="h-64 w-full mt-4">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={currentStep.chartData}>
-                              <XAxis dataKey="name" stroke="#64748b" />
-                              <YAxis stroke="#64748b" />
-                              <Tooltip
-                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                itemStyle={{ color: '#e2e8f0' }}
-                              />
-                              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                              <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                  {showScenarioChart && currentStep.chartData && currentStep.chartType === 'BAR' && (
+                    <ChartFrame>
+                      {({ width, height }) => (
+                        <BarChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                          <XAxis
+                            dataKey="name"
+                            stroke="#64748b"
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#334155' }}
+                          />
+                          <YAxis
+                            stroke="#64748b"
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#334155' }}
+                            width={44}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                            itemStyle={{ color: '#e2e8f0' }}
+                          />
+                          <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                          <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                        </BarChart>
                       )}
+                    </ChartFrame>
+                  )}
 
-                      {currentStep.chartData && currentStep.chartType === 'LINE' && (
-                        <div className="h-64 w-full mt-4">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={currentStep.chartData}>
-                              <XAxis dataKey="day" stroke="#64748b" />
-                              <YAxis stroke="#64748b" />
-                              <Tooltip
-                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                itemStyle={{ color: '#e2e8f0' }}
-                              />
-                              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                              <Line type="monotone" dataKey="Completed Onboarding" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                              <Line type="monotone" dataKey="Skipped Onboarding" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
+                  {showScenarioChart && currentStep.chartData && currentStep.chartType === 'LINE' && (
+                    <ChartFrame>
+                      {({ width, height }) => (
+                        <LineChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                          <XAxis
+                            dataKey="day"
+                            stroke="#64748b"
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#334155' }}
+                          />
+                          <YAxis
+                            stroke="#64748b"
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#334155' }}
+                            width={44}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                            itemStyle={{ color: '#e2e8f0' }}
+                          />
+                          <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                          <Line type="monotone" dataKey="Completed Onboarding" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+                          <Line type="monotone" dataKey="Skipped Onboarding" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />
+                        </LineChart>
                       )}
-                    </>
-                  ) : (
-                    <p className="text-slate-400 leading-relaxed">
-                      Pick an answer to reveal the coached analysis and supporting visualization for this scenario.
-                    </p>
+                    </ChartFrame>
                   )}
                 </div>
 
