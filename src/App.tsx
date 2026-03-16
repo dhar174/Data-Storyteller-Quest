@@ -25,6 +25,8 @@ export default function App() {
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
+  const totalScenarios = SCENARIOS.length;
+  const totalStepsInScenario = currentScenario?.steps.length ?? 0;
 
   const startGame = () => {
     setGameState('SCENARIO');
@@ -144,6 +146,23 @@ export default function App() {
               className="space-y-6"
             >
               {renderTrustMeter()}
+
+              <div className="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl">
+                <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                    Scenario {currentScenarioIndex + 1} of {totalScenarios}
+                  </span>
+                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                    Step {currentStepIndex + 1} of {totalStepsInScenario}
+                  </span>
+                </div>
+                <h2 className="text-3xl font-black tracking-tight text-white mb-2">
+                  {currentScenario.title}
+                </h2>
+                <p className="text-slate-300 leading-relaxed max-w-3xl">
+                  {currentScenario.description}
+                </p>
+              </div>
               
               <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
@@ -151,7 +170,7 @@ export default function App() {
                     {currentScenario.stakeholder.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">{currentScenario.stakeholder}</h2>
+                    <h3 className="text-xl font-bold text-white">{currentScenario.stakeholder}</h3>
                     <p className="text-sm text-slate-400 font-mono">{currentScenario.stakeholderRole}</p>
                   </div>
                 </div>
