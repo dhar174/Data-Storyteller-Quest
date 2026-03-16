@@ -3,8 +3,8 @@ import { GameState, Scenario, ScenarioStep, BossEvaluation } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { ArrowRight, CheckCircle, XCircle, Trophy, AlertCircle, Play, ChevronRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from 'recharts';
+import { ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
