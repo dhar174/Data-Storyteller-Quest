@@ -21,9 +21,14 @@ function ChartFrame({ children }: { children: (size: { width: number; height: nu
     if (!container) return;
 
     const updateSize = () => {
-      setSize({
-        width: container.clientWidth,
-        height: container.clientHeight,
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      setSize((prev) => {
+        if (prev.width === width && prev.height === height) {
+          return prev;
+        }
+        return { width, height };
       });
     };
 
