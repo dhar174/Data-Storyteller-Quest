@@ -101,7 +101,7 @@ export const SCENARIOS: Scenario[] = [
             id: 'c1-b',
             text: 'A grouped bar chart comparing Day 3 retention of users who completed onboarding vs. those who skipped it.',
             isCorrect: false,
-            feedback: 'That would isolate Day 3 well, but the chart on this slide shows how retention separates over time, not just at a single point.',
+            feedback: 'While a bar chart would show the problem on Day 3, a line chart is a better choice here because it illustrates the *trend* of how the two groups diverge over time, providing more context than a single data point.',
             scoreImpact: -5,
           },
           {
