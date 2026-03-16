@@ -12,6 +12,8 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const SCENARIO_CARD_ENTRANCE_MS = 220;
+
 function ChartFrame({ children }: { children: (size: { width: number; height: number }) => ReactNode }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -78,7 +80,7 @@ export default function App() {
     // Let the scenario card finish its entrance animation before Recharts measures.
     const timeoutId = window.setTimeout(() => {
       setShowScenarioChart(true);
-    }, 220);
+    }, SCENARIO_CARD_ENTRANCE_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
