@@ -86,8 +86,8 @@ export const SCENARIOS: Scenario[] = [
       {
         id: 'step-1-viz',
         type: 'VISUALIZATION',
-        context: 'You found that churn spikes dramatically on Day 3. Most of these users never completed the onboarding tutorial.',
-        dataSummary: 'Day 3 churn is high for users who skip onboarding.',
+        context: 'You found that retention drops dramatically on Day 3, especially for users who never completed the onboarding tutorial.',
+        dataSummary: 'Day 3 retention drops sharply for users who skip onboarding.',
         question: 'What is the best way to show how retention diverges after onboarding is skipped?',
         choices: [
           {
@@ -108,7 +108,7 @@ export const SCENARIOS: Scenario[] = [
             id: 'c1-c',
             text: 'A scatter plot of user age vs. time spent in app.',
             isCorrect: false,
-            feedback: 'Irrelevant to the core finding about onboarding and Day 3 churn. Don\'t distract with noise.',
+            feedback: 'Irrelevant to the core finding about onboarding and the Day 3 retention drop. Don\'t distract with noise.',
             scoreImpact: -15,
           }
         ],
