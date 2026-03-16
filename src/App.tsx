@@ -79,6 +79,7 @@ export default function App() {
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
+  const hasRevealedAnalysis = showFeedback;
 
   useEffect(() => {
     if (gameState !== 'SCENARIO' || !currentStep?.chartData) {
@@ -305,7 +306,15 @@ export default function App() {
                 <div className="space-y-4">
                   {currentStep.choices.map((choice) => {
                     const isSelected = selectedChoiceId === choice.id;
-                    const showResult = showFeedback && isSelected;
+                    const isCorrectChoice = choice.isCorrect;
+                    const showResult = showFeedback && (isSelected || isCorrectChoice);
+                    const isSelectedIncorrectChoice = showFeedback && isSelected && !isCorrectChoice;
+                    const isRevealedCorrectChoice = showFeedback && isCorrectChoice;
+                    const feedbackLabel = isCorrectChoice
+                      ? isSelected
+                        ? 'Good Choice'
+                        : 'Correct Answer'
+                      : 'Needs Improvement';
                     
                     return (
                       <button
@@ -315,9 +324,9 @@ export default function App() {
                         className={cn(
                           "w-full text-left p-6 rounded-xl border transition-all duration-200 relative overflow-hidden",
                           !showFeedback && "bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-indigo-500/50 hover:shadow-lg",
-                          showFeedback && !isSelected && "bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed",
-                          showResult && choice.isCorrect && "bg-emerald-950/30 border-emerald-500/50 ring-1 ring-emerald-500/50",
-                          showResult && !choice.isCorrect && "bg-rose-950/30 border-rose-500/50 ring-1 ring-rose-500/50"
+                          showFeedback && !isSelected && !isCorrectChoice && "bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed",
+                          isRevealedCorrectChoice && "bg-emerald-950/30 border-emerald-500/50 ring-1 ring-emerald-500/50",
+                          isSelectedIncorrectChoice && "bg-rose-950/30 border-rose-500/50 ring-1 ring-rose-500/50"
                         )}
                       >
                         <div className="flex items-start gap-4">
@@ -334,13 +343,13 @@ export default function App() {
                                   className="text-sm text-slate-400 bg-slate-950/50 p-4 rounded-lg border border-slate-800/50"
                                 >
                                   <div className="flex items-center gap-2 mb-2">
-                                    {choice.isCorrect ? (
+                                    {isCorrectChoice ? (
                                       <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
                                       <XCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={cn("font-bold", choice.isCorrect ? "text-emerald-400" : "text-rose-400")}>
-                                      {choice.isCorrect ? "Good Choice" : "Needs Improvement"}
+                                    <span className={cn("font-bold", isCorrectChoice ? "text-emerald-400" : "text-rose-400")}>
+                                      {feedbackLabel}
                                     </span>
                                   </div>
                                   <p>{choice.feedback}</p>
