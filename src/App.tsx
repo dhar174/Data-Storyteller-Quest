@@ -36,11 +36,21 @@ function ChartFrame({ children }: { children: (size: { width: number; height: nu
 
     updateSize();
 
-    const resizeObserver = new ResizeObserver(updateSize);
-    resizeObserver.observe(container);
+    let resizeObserver: ResizeObserver | null = null;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateSize);
+      resizeObserver.observe(container);
+    } else {
+      window.addEventListener('resize', updateSize);
+    }
 
     return () => {
-      resizeObserver.disconnect();
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', updateSize);
+      }
     };
   }, []);
 
