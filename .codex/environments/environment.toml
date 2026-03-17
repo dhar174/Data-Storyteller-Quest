@@ -3,4 +3,9 @@ version = 1
 name = "Data-Storyteller-Quest"
 
 [setup]
-script = ""
+script = '''
+pip install -r requirements.txt
+ 
+npm install -g @playwright/cli@latest
+
+'''
