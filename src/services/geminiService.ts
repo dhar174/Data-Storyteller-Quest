@@ -37,6 +37,6 @@ export async function evaluateBossResponse(
     if (error instanceof Error && error.message) {
       throw error;
     }
-    throw new Error('We could not reach the manager simulator. Please retry or continue without a score.');
+    throw new Error('We could not reach the manager simulator. Please retry or continue without a score.', { cause: error });
   }
 }
