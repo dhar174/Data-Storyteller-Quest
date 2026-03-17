@@ -175,7 +175,6 @@ export default function App() {
   };
 
   const skipBossEvaluation = () => {
-    setBossError(null);
     nextScenario();
   };
 
