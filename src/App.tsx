@@ -231,27 +231,27 @@ export default function App() {
 
                 <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 md:p-6 shadow-xl">
                   <div className="flex items-center justify-center gap-3 mb-5">
-                    <div className="h-px w-10 bg-slate-800" />
-                    <p className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
+                    <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
                       How It Works
-                    </p>
-                    <div className="h-px w-10 bg-slate-800" />
+                    </h2>
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <ol className="grid gap-4 md:grid-cols-3 list-none p-0 m-0">
                     {MENU_PRIMER_STEPS.map((step) => (
-                      <div
+                      <li
                         key={step.id}
                         className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 text-left shadow-[0_18px_45px_-28px_rgba(15,23,42,0.9)]"
                       >
-                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-sm font-bold text-indigo-300 mb-4">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-sm font-bold text-indigo-300 mb-4" aria-hidden="true">
                           {step.id}
                         </div>
-                        <h2 className="text-lg font-bold text-white mb-2">{step.title}</h2>
+                        <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
                         <p className="text-sm leading-relaxed text-slate-400">{step.body}</p>
-                      </div>
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 </div>
               </div>
               
