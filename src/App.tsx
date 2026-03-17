@@ -65,6 +65,35 @@ function ChartFrame({ children }: { children: (size: { width: number; height: nu
   );
 }
 
+function ContextPanel({
+  badges,
+  title,
+  description,
+  children,
+  className,
+}: {
+  badges: string[];
+  title: string;
+  description: string;
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl", className)}>
+      <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+        {badges.map((badge) => (
+          <span key={badge} className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+            {badge}
+          </span>
+        ))}
+      </div>
+      <h2 className="text-3xl font-black tracking-tight text-white mb-2">{title}</h2>
+      <p className="text-slate-300 leading-relaxed max-w-3xl">{description}</p>
+      {children ? <div className="mt-5">{children}</div> : null}
+    </div>
+  );
+}
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
@@ -219,22 +248,14 @@ export default function App() {
             >
               {renderTrustMeter()}
 
-              <div className="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl">
-                <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
-                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
-                    Scenario {currentScenarioIndex + 1} of {totalScenarios}
-                  </span>
-                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
-                    Step {currentStepIndex + 1} of {totalStepsInScenario}
-                  </span>
-                </div>
-                <h2 className="text-3xl font-black tracking-tight text-white mb-2">
-                  {currentScenario.title}
-                </h2>
-                <p className="text-slate-300 leading-relaxed max-w-3xl">
-                  {currentScenario.description}
-                </p>
-              </div>
+              <ContextPanel
+                badges={[
+                  `Scenario ${currentScenarioIndex + 1} of ${totalScenarios}`,
+                  `Step ${currentStepIndex + 1} of ${totalStepsInScenario}`,
+                ]}
+                title={currentScenario.title}
+                description={currentScenario.description}
+              />
               
               <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
@@ -411,6 +432,15 @@ export default function App() {
               className="space-y-6"
             >
               {renderTrustMeter()}
+
+              <ContextPanel
+                badges={[
+                  `Scenario ${currentScenarioIndex + 1} of ${totalScenarios}`,
+                  'Boss Review',
+                ]}
+                title={currentScenario.title}
+                description={currentScenario.description}
+              />
               
               <div className="bg-slate-900 rounded-2xl p-8 border border-indigo-500/30 shadow-[0_0_50px_-12px_rgba(79,70,229,0.2)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
@@ -505,37 +535,50 @@ export default function App() {
               key="end"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8"
+              className="min-h-[70vh] space-y-8"
             >
-              <div className="w-32 h-32 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-indigo-500/30">
-                <Trophy className="w-16 h-16 text-indigo-400" />
-              </div>
-              
-              <div className="space-y-4">
-                <h1 className="text-5xl font-black text-white">Simulation Complete</h1>
-                <p className="text-xl text-slate-400 max-w-xl mx-auto">
-                  You've successfully navigated the treacherous waters of stakeholder communication.
-                </p>
-              </div>
-
-              <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 w-full max-w-md">
-                <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">Final Trust Score</h3>
-                <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
-                  {trustScore}%
-                </div>
-                <p className="text-slate-300">
-                  {trustScore >= 80 ? "Outstanding! You are a master data storyteller. Stakeholders trust your insights implicitly." :
-                   trustScore >= 50 ? "Good job. You have a solid foundation, but there's room to improve your narrative framing." :
-                   "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
-                </p>
-              </div>
-              
-              <button 
-                onClick={startGame}
-                className="px-8 py-4 font-bold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors"
+              <ContextPanel
+                badges={[`Completed ${totalScenarios} of ${totalScenarios} scenarios`, 'Journey Summary']}
+                title="Simulation Complete"
+                description="You've successfully navigated the treacherous waters of stakeholder communication."
+                className="text-left"
               >
-                PLAY AGAIN
-              </button>
+                <div className="flex flex-wrap gap-2">
+                  {SCENARIOS.map((scenario, index) => (
+                    <span
+                      key={scenario.id}
+                      className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-mono uppercase tracking-[0.2em] text-indigo-200"
+                    >
+                      {index + 1}. {scenario.title}
+                    </span>
+                  ))}
+                </div>
+              </ContextPanel>
+
+              <div className="flex flex-col items-center justify-center text-center space-y-8">
+                <div className="w-32 h-32 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-indigo-500/30">
+                  <Trophy className="w-16 h-16 text-indigo-400" />
+                </div>
+
+                <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 w-full max-w-md">
+                  <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">Final Trust Score</h3>
+                  <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
+                    {trustScore}%
+                  </div>
+                  <p className="text-slate-300">
+                    {trustScore >= 80 ? "Outstanding! You are a master data storyteller. Stakeholders trust your insights implicitly." :
+                     trustScore >= 50 ? "Good job. You have a solid foundation, but there's room to improve your narrative framing." :
+                     "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
+                  </p>
+                </div>
+                
+                <button 
+                  onClick={startGame}
+                  className="px-8 py-4 font-bold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors"
+                >
+                  PLAY AGAIN
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
