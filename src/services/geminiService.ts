@@ -1,5 +1,10 @@
 import { BossEvaluation } from '../types';
 
+const BOSS_EVALUATION_UNAVAILABLE_MESSAGE =
+  'We could not reach the manager simulator. Please retry or continue without a score.';
+
+class BossEvaluationRequestError extends Error {}
+
 export async function evaluateBossResponse(
   stakeholderRole: string,
   question: string,
@@ -28,15 +33,16 @@ export async function evaluateBossResponse(
       } catch {
         // Ignore parse errors and fall back to a generic message.
       }
-      throw new Error(message);
+      throw new BossEvaluationRequestError(message);
     }
 
     return await response.json() as BossEvaluation;
   } catch (error) {
     console.error('Error evaluating boss response:', error);
-    if (error instanceof Error && error.message) {
+    if (error instanceof BossEvaluationRequestError && error.message) {
       throw error;
     }
-    throw new Error('We could not reach the manager simulator. Please retry or continue without a score.', { cause: error });
+
+    throw new Error(BOSS_EVALUATION_UNAVAILABLE_MESSAGE, { cause: error });
   }
 }
