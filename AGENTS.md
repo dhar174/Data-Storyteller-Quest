@@ -325,9 +325,9 @@ If you are new to the repository and need to work on agent-related content quick
 
 ## Related Paths
 
-- `README.md`
-- `.github/workflows/deepagents-setup-configuration/SKILL.md`
-- `.github/workflows/deepagents-setup-configuration/references/deep-agents-reference.md`
-- `.github/workflows/webapp-testing/SKILL.md`
-- `.github/skills/`
-- `.codex/skills/`
+- [README.md](README.md)
+- [.github/workflows/deepagents-setup-configuration/SKILL.md](.github/workflows/deepagents-setup-configuration/SKILL.md)
+- [.github/workflows/deepagents-setup-configuration/references/deep-agents-reference.md](.github/workflows/deepagents-setup-configuration/references/deep-agents-reference.md)
+- [.github/workflows/webapp-testing/SKILL.md](.github/workflows/webapp-testing/SKILL.md)
+- [.github/skills/](.github/skills/)
+- [.codex/skills/](.codex/skills/)
