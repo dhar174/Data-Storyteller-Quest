@@ -26,7 +26,7 @@ export default function App() {
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
   const totalScenarios = SCENARIOS.length;
-  const totalStepsInScenario = currentScenario?.steps.length ?? 0;
+  const totalStepsInScenario = currentScenario.steps.length;
 
   const startGame = () => {
     setGameState('SCENARIO');
