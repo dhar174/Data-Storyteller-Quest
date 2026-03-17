@@ -232,9 +232,9 @@ export default function App() {
                 <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 md:p-6 shadow-xl">
                   <div className="flex items-center justify-center gap-3 mb-5">
                     <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
-                    <h3 className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
+                    <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
                       How It Works
-                    </h3>
+                    </h2>
                     <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
                   </div>
 
@@ -247,7 +247,7 @@ export default function App() {
                         <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-sm font-bold text-indigo-300 mb-4" aria-hidden="true">
                           {step.id}
                         </div>
-                        <h4 className="text-lg font-bold text-white mb-2">{step.title}</h4>
+                        <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
                         <p className="text-sm leading-relaxed text-slate-400">{step.body}</p>
                       </li>
                     ))}
