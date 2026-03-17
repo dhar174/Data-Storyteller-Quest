@@ -4,7 +4,7 @@ import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from 'recharts';
-import { ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -187,6 +187,7 @@ export default function App() {
   const [bossInput, setBossInput] = useState('');
   const [bossEvaluation, setBossEvaluation] = useState<BossEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [bossError, setBossError] = useState<string | null>(null);
   const [showScenarioChart, setShowScenarioChart] = useState(false);
   const [currentScenarioStepResults, setCurrentScenarioStepResults] = useState<ScenarioStepResult[]>([]);
   const [completedScenarioRecaps, setCompletedScenarioRecaps] = useState<ScenarioRecap[]>([]);
@@ -221,6 +222,7 @@ export default function App() {
     setTrustScore(50);
     setSelectedChoiceId(null);
     setShowFeedback(false);
+    setBossError(null);
     setBossInput('');
     setBossEvaluation(null);
     setCurrentScenarioStepResults([]);
@@ -267,16 +269,26 @@ export default function App() {
   const handleBossSubmit = async () => {
     if (!bossInput.trim() || isEvaluating) return;
     setIsEvaluating(true);
-    
-    const evaluation = await evaluateBossResponse(
-      currentScenario.stakeholderRole,
-      currentScenario.bossQuestion,
-      bossInput
-    );
-    
-    setBossEvaluation(evaluation);
-    setTrustScore(prev => Math.max(0, Math.min(100, prev + (evaluation.score > 70 ? 20 : evaluation.score < 40 ? -20 : 0))));
-    setIsEvaluating(false);
+    setBossError(null);
+
+    try {
+      const evaluation = await evaluateBossResponse(
+        currentScenario.stakeholderRole,
+        currentScenario.bossQuestion,
+        bossInput
+      );
+
+      setBossEvaluation(evaluation);
+      setTrustScore(prev => Math.max(0, Math.min(100, prev + (evaluation.score > 70 ? 20 : evaluation.score < 40 ? -20 : 0))));
+    } catch (error) {
+      setBossError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'An unexpected error occurred. Please try again.'
+      );
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   const nextScenario = () => {
@@ -299,6 +311,7 @@ export default function App() {
     setCurrentScenarioStepResults([]);
     setBossEvaluation(null);
     setBossInput('');
+    setBossError(null);
     
     if (currentScenarioIndex < SCENARIOS.length - 1) {
       setCurrentScenarioIndex(prev => prev + 1);
@@ -307,6 +320,10 @@ export default function App() {
     } else {
       setGameState('END');
     }
+  };
+
+  const skipBossEvaluation = () => {
+    nextScenario();
   };
 
   const renderTrustMeter = () => (
@@ -624,11 +641,44 @@ export default function App() {
                     <label className="block text-sm font-mono text-slate-400 uppercase tracking-wider">Your Response</label>
                     <textarea
                       value={bossInput}
-                      onChange={(e) => setBossInput(e.target.value)}
+                      onChange={(e) => {
+                        setBossInput(e.target.value);
+                        if (bossError) {
+                          setBossError(null);
+                        }
+                      }}
                       placeholder="Type your response here. Focus on empathy, clarity, and actionable data..."
                       className="w-full h-40 bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none transition-all"
                     />
-                    <div className="flex justify-end">
+
+                    {bossError && (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-mono uppercase tracking-[0.2em] text-amber-200">
+                              Evaluation Unavailable
+                            </p>
+                            <p className="text-sm leading-relaxed text-amber-100">
+                              {bossError}
+                            </p>
+                            <p className="text-sm leading-relaxed text-amber-200/90">
+                              Retry when you are ready, or continue without changing your trust score.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                      {bossError && (
+                        <button
+                          onClick={skipBossEvaluation}
+                          className="px-5 py-3 border border-slate-700 text-slate-200 font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                        >
+                          Continue Without Score
+                        </button>
+                      )}
                       <button
                         onClick={handleBossSubmit}
                         disabled={isEvaluating || !bossInput.trim()}
@@ -637,7 +687,9 @@ export default function App() {
                         {isEvaluating ? (
                           <span className="animate-pulse">Evaluating...</span>
                         ) : (
-                          <>Submit Response <ChevronRight className="w-5 h-5" /></>
+                          <>
+                            {bossError ? 'Retry Response' : 'Submit Response'} <ChevronRight className="w-5 h-5" />
+                          </>
                         )}
                       </button>
                     </div>

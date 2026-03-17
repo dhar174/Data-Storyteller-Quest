@@ -1,12 +1,9 @@
 import { BossEvaluation } from '../types';
 
-function fallbackEvaluation(): BossEvaluation {
-  return {
-    score: 50,
-    feedback: 'There was an error connecting to your manager. They gave you a neutral score.',
-    stakeholderReaction: 'I guess that\'s fine for now.',
-  };
-}
+const BOSS_EVALUATION_UNAVAILABLE_MESSAGE =
+  'We could not reach the manager simulator. Please retry or continue without a score.';
+
+class BossEvaluationRequestError extends Error {}
 
 export async function evaluateBossResponse(
   stakeholderRole: string,
@@ -27,24 +24,26 @@ export async function evaluateBossResponse(
     });
 
     if (!response.ok) {
-      let message = `Request failed with status ${response.status}`;
+      let message = BOSS_EVALUATION_UNAVAILABLE_MESSAGE;
       try {
         const payload = await response.json() as { error?: string; fallback?: BossEvaluation };
         if (payload.error) {
           message = payload.error;
         }
-        if (payload.fallback) {
-          return payload.fallback;
-        }
       } catch {
         // Ignore parse errors and fall back to a generic message.
       }
-      throw new Error(message);
+      console.error('Boss evaluation request failed', { status: response.status });
+      throw new BossEvaluationRequestError(message);
     }
 
     return await response.json() as BossEvaluation;
   } catch (error) {
     console.error('Error evaluating boss response:', error);
-    return fallbackEvaluation();
+    if (error instanceof BossEvaluationRequestError && error.message) {
+      throw error;
+    }
+
+    throw new Error(BOSS_EVALUATION_UNAVAILABLE_MESSAGE, { cause: error });
   }
 }
