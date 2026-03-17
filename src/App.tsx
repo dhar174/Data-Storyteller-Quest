@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { GameState, Scenario, ScenarioStep, BossEvaluation } from './types';
+import { GameState, BossEvaluation, ScenarioStepResult, ScenarioRecap } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,6 +13,23 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const SCENARIO_CARD_ENTRANCE_MS = 220;
+const MENU_PRIMER_STEPS = [
+  {
+    id: '01',
+    title: 'Read the scenario',
+    body: 'Review the stakeholder context and the data in front of you before you make your call.',
+  },
+  {
+    id: '02',
+    title: 'Pick the strongest story',
+    body: 'Choose the chart or narrative framing that best supports the stakeholder decision.',
+  },
+  {
+    id: '03',
+    title: 'Handle the boss prompt',
+    body: 'Wrap each scenario with a short free-response answer that balances empathy, logic, and action.',
+  },
+] as const;
 
 function ChartFrame({ children }: { children: (size: { width: number; height: number }) => ReactNode }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +82,101 @@ function ChartFrame({ children }: { children: (size: { width: number; height: nu
   );
 }
 
+function ContextPanel({
+  badges,
+  title,
+  description,
+  children,
+  className,
+  headingLevel = 2,
+}: {
+  badges: string[];
+  title: string;
+  description: string;
+  children?: ReactNode;
+  className?: string;
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+}) {
+  const HeadingTag = `h${headingLevel}` as keyof JSX.IntrinsicElements;
+
+  return (
+    <div className={cn("bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl", className)}>
+      <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+        {badges.map((badge) => (
+          <span key={badge} className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+            {badge}
+          </span>
+        ))}
+      </div>
+      <HeadingTag className="text-3xl font-black tracking-tight text-white mb-2">{title}</HeadingTag>
+      <p className="text-slate-300 leading-relaxed max-w-3xl">{description}</p>
+      {children ? <div className="mt-5">{children}</div> : null}
+    </div>
+  );
+}
+
+function getScenarioTakeaway(scenarioId: string, stepResults: ScenarioStepResult[], totalSteps: number) {
+  const correctAnswers = stepResults.filter((result) => result.wasCorrect).length;
+
+  if (correctAnswers === totalSteps) {
+    if (scenarioId === 'campaign-roi') {
+      return 'You kept the CMO focused on efficient growth and translated the data into a clear ROI story.';
+    }
+
+    if (scenarioId === 'churn-crisis') {
+      return 'You tied the Day 3 retention drop to onboarding and turned the finding into a practical product experiment.';
+    }
+
+    return 'You translated the evidence into a clear stakeholder-ready story.';
+  }
+
+  const incorrectStepIds = stepResults
+    .filter((result) => !result.wasCorrect)
+    .map((result) => result.stepId);
+
+  if (scenarioId === 'campaign-roi') {
+    if (incorrectStepIds.includes('step-1-viz') && incorrectStepIds.includes('step-2-narrative')) {
+      return 'Lead with CPA, not raw user totals, and turn that efficiency gap into the headline so the CMO knows what to do next.';
+    }
+
+    if (incorrectStepIds.includes('step-1-viz')) {
+      return 'Lead with a CPA comparison so the CMO can judge efficiency before getting distracted by total user volume.';
+    }
+
+    if (incorrectStepIds.includes('step-2-narrative')) {
+      return 'Turn the ROI chart into a headline that names the efficiency win instead of describing the slide.';
+    }
+  }
+
+  if (scenarioId === 'churn-crisis') {
+    if (incorrectStepIds.includes('step-1-viz') && incorrectStepIds.includes('step-2-narrative')) {
+      return 'Show the onboarding gap as a retention trend and pair it with a concrete experiment the product team can run next.';
+    }
+
+    if (incorrectStepIds.includes('step-1-viz')) {
+      return 'Use a retention trend so the Day 3 divergence after skipped onboarding is obvious over time, not just at one checkpoint.';
+    }
+
+    if (incorrectStepIds.includes('step-2-narrative')) {
+      return 'Translate the churn signal into a specific onboarding experiment instead of stopping at a technical finding.';
+    }
+  }
+
+  return 'Focus on making the data actionable and relevant for the stakeholder.';
+}
+
+function summarizeBossFeedback(feedback: string) {
+  const normalized = feedback.trim();
+  const firstSentenceMatch = normalized.match(/^.*?[.!?](?:\s|$)/);
+  const summary = (firstSentenceMatch?.[0] ?? normalized).trim();
+
+  if (summary.length <= 140) {
+    return summary;
+  }
+
+  return `${summary.slice(0, 137).trimEnd()}...`;
+}
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
@@ -77,6 +189,8 @@ export default function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [bossError, setBossError] = useState<string | null>(null);
   const [showScenarioChart, setShowScenarioChart] = useState(false);
+  const [currentScenarioStepResults, setCurrentScenarioStepResults] = useState<ScenarioStepResult[]>([]);
+  const [completedScenarioRecaps, setCompletedScenarioRecaps] = useState<ScenarioRecap[]>([]);
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
@@ -108,9 +222,11 @@ export default function App() {
     setTrustScore(50);
     setSelectedChoiceId(null);
     setShowFeedback(false);
-    setBossEvaluation(null);
-    setBossInput('');
     setBossError(null);
+    setBossInput('');
+    setBossEvaluation(null);
+    setCurrentScenarioStepResults([]);
+    setCompletedScenarioRecaps([]);
   };
 
   const handleChoice = (choiceId: string) => {
@@ -121,6 +237,21 @@ export default function App() {
     const choice = currentStep.choices.find(c => c.id === choiceId);
     if (choice) {
       setTrustScore(prev => Math.max(0, Math.min(100, prev + choice.scoreImpact)));
+      setCurrentScenarioStepResults((prev) => {
+        const remainingResults = prev.filter((result) => result.stepId !== currentStep.id);
+
+        return [
+          ...remainingResults,
+          {
+            stepId: currentStep.id,
+            question: currentStep.question,
+            selectedChoiceId: choice.id,
+            selectedChoiceText: choice.text,
+            wasCorrect: choice.isCorrect,
+            feedback: choice.feedback,
+          },
+        ];
+      });
     }
   };
 
@@ -161,6 +292,23 @@ export default function App() {
   };
 
   const nextScenario = () => {
+    const correctAnswers = currentScenarioStepResults.filter((result) => result.wasCorrect).length;
+    const recap: ScenarioRecap = {
+      scenarioId: currentScenario.id,
+      scenarioTitle: currentScenario.title,
+      totalSteps: currentScenario.steps.length,
+      correctAnswers,
+      takeaway: getScenarioTakeaway(currentScenario.id, currentScenarioStepResults, currentScenario.steps.length),
+      bossScore: bossEvaluation?.score,
+      bossOutcomeSummary: bossEvaluation
+        ? summarizeBossFeedback(bossEvaluation.feedback)
+        : 'Skipped due to connection issue.',
+      bossSkipped: !bossEvaluation,
+      bossNote: bossEvaluation ? undefined : 'Skipped due to connection issue.',
+    };
+
+    setCompletedScenarioRecaps((prev) => [...prev, recap]);
+    setCurrentScenarioStepResults([]);
     setBossEvaluation(null);
     setBossInput('');
     setBossError(null);
@@ -217,6 +365,45 @@ export default function App() {
                   Learn to communicate insights, handle difficult stakeholders, and build trust through effective data storytelling.
                 </p>
               </div>
+
+              <div className="w-full max-w-4xl space-y-5">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    {totalScenarios} scenarios
+                  </span>
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    Multiple choice + free response
+                  </span>
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    Finish with a trust score
+                  </span>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 md:p-6 shadow-xl">
+                  <div className="flex items-center justify-center gap-3 mb-5">
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
+                    <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
+                      How It Works
+                    </h2>
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
+                  </div>
+
+                  <ol className="grid gap-4 md:grid-cols-3 list-none p-0 m-0">
+                    {MENU_PRIMER_STEPS.map((step) => (
+                      <li
+                        key={step.id}
+                        className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 text-left shadow-[0_18px_45px_-28px_rgba(15,23,42,0.9)]"
+                      >
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-sm font-bold text-indigo-300 mb-4" aria-hidden="true">
+                          {step.id}
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
+                        <p className="text-sm leading-relaxed text-slate-400">{step.body}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
               
               <button 
                 onClick={startGame}
@@ -238,22 +425,14 @@ export default function App() {
             >
               {renderTrustMeter()}
 
-              <div className="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl">
-                <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
-                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
-                    Scenario {currentScenarioIndex + 1} of {totalScenarios}
-                  </span>
-                  <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
-                    Step {currentStepIndex + 1} of {totalStepsInScenario}
-                  </span>
-                </div>
-                <h2 className="text-3xl font-black tracking-tight text-white mb-2">
-                  {currentScenario.title}
-                </h2>
-                <p className="text-slate-300 leading-relaxed max-w-3xl">
-                  {currentScenario.description}
-                </p>
-              </div>
+              <ContextPanel
+                badges={[
+                  `Scenario ${currentScenarioIndex + 1} of ${totalScenarios}`,
+                  `Step ${currentStepIndex + 1} of ${totalStepsInScenario}`,
+                ]}
+                title={currentScenario.title}
+                description={currentScenario.description}
+              />
               
               <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
@@ -430,6 +609,15 @@ export default function App() {
               className="space-y-6"
             >
               {renderTrustMeter()}
+
+              <ContextPanel
+                badges={[
+                  `Scenario ${currentScenarioIndex + 1} of ${totalScenarios}`,
+                  'Boss Review',
+                ]}
+                title={currentScenario.title}
+                description={currentScenario.description}
+              />
               
               <div className="bg-slate-900 rounded-2xl p-8 border border-indigo-500/30 shadow-[0_0_50px_-12px_rgba(79,70,229,0.2)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
@@ -559,37 +747,81 @@ export default function App() {
               key="end"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8"
+              className="min-h-[70vh] space-y-8"
             >
-              <div className="w-32 h-32 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-indigo-500/30">
-                <Trophy className="w-16 h-16 text-indigo-400" />
-              </div>
-              
-              <div className="space-y-4">
-                <h1 className="text-5xl font-black text-white">Simulation Complete</h1>
-                <p className="text-xl text-slate-400 max-w-xl mx-auto">
-                  You've successfully navigated the treacherous waters of stakeholder communication.
-                </p>
+              <ContextPanel
+                badges={[`Completed ${totalScenarios} of ${totalScenarios} scenarios`, 'Journey Summary']}
+                title="Simulation Complete"
+                description="You've successfully navigated the treacherous waters of stakeholder communication."
+                className="text-left"
+              >
+                <div className="flex flex-wrap gap-2">
+                  {SCENARIOS.map((scenario, index) => (
+                    <span
+                      key={scenario.id}
+                      className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-mono uppercase tracking-[0.2em] text-indigo-200"
+                    >
+                      {index + 1}. {scenario.title}
+                    </span>
+                  ))}
+                </div>
+              </ContextPanel>
+
+              <div className="flex flex-col items-center justify-center text-center space-y-8">
+                <div className="w-32 h-32 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-indigo-500/30">
+                  <Trophy className="w-16 h-16 text-indigo-400" />
+                </div>
+
+                <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 w-full max-w-md">
+                  <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">Final Trust Score</h3>
+                  <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
+                    {trustScore}%
+                  </div>
+                  <p className="text-slate-300">
+                    {trustScore >= 80 ? "Outstanding! You are a master data storyteller. Stakeholders trust your insights implicitly." :
+                     trustScore >= 50 ? "Good job. You have a solid foundation, but there's room to improve your narrative framing." :
+                     "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
+                  </p>
+                </div>
               </div>
 
-              <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 w-full max-w-md">
-                <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">Final Trust Score</h3>
-                <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
-                  {trustScore}%
-                </div>
-                <p className="text-slate-300">
-                  {trustScore >= 80 ? "Outstanding! You are a master data storyteller. Stakeholders trust your insights implicitly." :
-                   trustScore >= 50 ? "Good job. You have a solid foundation, but there's room to improve your narrative framing." :
-                   "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
-                </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {completedScenarioRecaps.map((recap) => (
+                  <div
+                    key={recap.scenarioId}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-left shadow-xl"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                      <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                        {recap.correctAnswers} / {recap.totalSteps} correct
+                      </span>
+                      <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                        {recap.bossSkipped ? 'Boss Skipped' : `Boss Score ${recap.bossScore}`}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-black tracking-tight text-white mb-3">{recap.scenarioTitle}</h3>
+                    <p className="text-slate-300 leading-relaxed mb-5">{recap.takeaway}</p>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                      <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-2">
+                        Boss Outcome
+                      </h4>
+                      <p className="text-slate-300">
+                        {recap.bossSkipped ? recap.bossNote : recap.bossOutcomeSummary}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              
-              <button 
-                onClick={startGame}
-                className="px-8 py-4 font-bold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors"
-              >
-                PLAY AGAIN
-              </button>
+
+              <div className="flex justify-center">
+                <button 
+                  onClick={startGame}
+                  className="px-8 py-4 font-bold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors"
+                >
+                  PLAY AGAIN
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
