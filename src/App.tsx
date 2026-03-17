@@ -153,7 +153,7 @@ export default function App() {
       setBossError(
         error instanceof Error && error.message
           ? error.message
-          : 'We could not reach the manager simulator. Please retry or continue without a score.'
+          : 'An unexpected error occurred. Please try again.'
       );
     } finally {
       setIsEvaluating(false);
