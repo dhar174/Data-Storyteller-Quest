@@ -74,3 +74,22 @@ Update:
   - Verified final journey summary at mobile and desktop widths
   - Console check returned no browser errors
 - The standalone `develop-web-game` Playwright client could not be used directly because its runtime is missing the `playwright` package, so browser verification used the built-in persistent Playwright tools instead.
+
+Update:
+- Created stacked branch `codex/fix-issue-15-post-run-recap` from `codex/fix-issue-16-boss-results-context`.
+- Added `ScenarioStepResult` and `ScenarioRecap` types in `src/types.ts`.
+- The app now records step outcomes as answers are chosen and finalizes one recap per scenario when the boss stage is completed.
+- Final results now render one compact recap card per scenario with:
+  - scenario title
+  - coached-question accuracy
+  - a takeaway tied to the specific step(s) the player missed
+  - boss outcome score + one-sentence feedback summary
+- `PLAY AGAIN` clears recap history by resetting run state in `startGame()`.
+- Validation for issue #15:
+  - `npm run lint`
+  - `npm run build`
+  - mixed-result Playwright walkthrough with mocked `/api/evaluate-boss-response`
+  - verified two recap cards render with distinct takeaways
+  - verified boss outcome summaries render on the recap cards
+  - verified `PLAY AGAIN` resets the run to scenario 1 with no prior recap state carried forward
+  - verified browser console is clean on the mocked success path
