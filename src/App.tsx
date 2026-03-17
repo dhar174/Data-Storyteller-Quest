@@ -13,6 +13,23 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const SCENARIO_CARD_ENTRANCE_MS = 220;
+const MENU_PRIMER_STEPS = [
+  {
+    id: '01',
+    title: 'Read the scenario',
+    body: 'Review the stakeholder context and the data in front of you before you make your call.',
+  },
+  {
+    id: '02',
+    title: 'Pick the strongest story',
+    body: 'Choose the chart or narrative framing that best supports the stakeholder decision.',
+  },
+  {
+    id: '03',
+    title: 'Handle the boss prompt',
+    body: 'Wrap each scenario with a short free-response answer that balances empathy, logic, and action.',
+  },
+] as const;
 
 function ChartFrame({ children }: { children: (size: { width: number; height: number }) => ReactNode }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -330,6 +347,45 @@ export default function App() {
                 <p className="text-xl text-slate-400 max-w-2xl mx-auto font-light">
                   Learn to communicate insights, handle difficult stakeholders, and build trust through effective data storytelling.
                 </p>
+              </div>
+
+              <div className="w-full max-w-4xl space-y-5">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    {totalScenarios} scenarios
+                  </span>
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    Multiple choice + free response
+                  </span>
+                  <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2">
+                    Finish with a trust score
+                  </span>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 md:p-6 shadow-xl">
+                  <div className="flex items-center justify-center gap-3 mb-5">
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
+                    <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-slate-500">
+                      How It Works
+                    </h2>
+                    <div className="h-px w-10 bg-slate-800" aria-hidden="true" />
+                  </div>
+
+                  <ol className="grid gap-4 md:grid-cols-3 list-none p-0 m-0">
+                    {MENU_PRIMER_STEPS.map((step) => (
+                      <li
+                        key={step.id}
+                        className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 text-left shadow-[0_18px_45px_-28px_rgba(15,23,42,0.9)]"
+                      >
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-sm font-bold text-indigo-300 mb-4" aria-hidden="true">
+                          {step.id}
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
+                        <p className="text-sm leading-relaxed text-slate-400">{step.body}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
               </div>
               
               <button 
