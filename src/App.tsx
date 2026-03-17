@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { GameState, Scenario, ScenarioStep, BossEvaluation } from './types';
+import { GameState, BossEvaluation, ScenarioStepResult, ScenarioRecap } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -98,6 +98,68 @@ function ContextPanel({
   );
 }
 
+function getScenarioTakeaway(scenarioId: string, stepResults: ScenarioStepResult[], totalSteps: number) {
+  const correctAnswers = stepResults.filter((result) => result.wasCorrect).length;
+
+  if (correctAnswers === totalSteps) {
+    if (scenarioId === 'campaign-roi') {
+      return 'You kept the CMO focused on efficient growth and translated the data into a clear ROI story.';
+    }
+
+    if (scenarioId === 'churn-crisis') {
+      return 'You tied the Day 3 retention drop to onboarding and turned the finding into a practical product experiment.';
+    }
+
+    return 'You translated the evidence into a clear stakeholder-ready story.';
+  }
+
+  const incorrectStepIds = stepResults
+    .filter((result) => !result.wasCorrect)
+    .map((result) => result.stepId);
+
+  if (scenarioId === 'campaign-roi') {
+    if (incorrectStepIds.includes('step-1-viz') && incorrectStepIds.includes('step-2-narrative')) {
+      return 'Lead with CPA, not raw user totals, and turn that efficiency gap into the headline so the CMO knows what to do next.';
+    }
+
+    if (incorrectStepIds.includes('step-1-viz')) {
+      return 'Lead with a CPA comparison so the CMO can judge efficiency before getting distracted by total user volume.';
+    }
+
+    if (incorrectStepIds.includes('step-2-narrative')) {
+      return 'Turn the ROI chart into a headline that names the efficiency win instead of describing the slide.';
+    }
+  }
+
+  if (scenarioId === 'churn-crisis') {
+    if (incorrectStepIds.includes('step-1-viz') && incorrectStepIds.includes('step-2-narrative')) {
+      return 'Show the onboarding gap as a retention trend and pair it with a concrete experiment the product team can run next.';
+    }
+
+    if (incorrectStepIds.includes('step-1-viz')) {
+      return 'Use a retention trend so the Day 3 divergence after skipped onboarding is obvious over time, not just at one checkpoint.';
+    }
+
+    if (incorrectStepIds.includes('step-2-narrative')) {
+      return 'Translate the churn signal into a specific onboarding experiment instead of stopping at a technical finding.';
+    }
+  }
+
+  return 'Focus on making the data actionable and relevant for the stakeholder.';
+}
+
+function summarizeBossFeedback(feedback: string) {
+  const normalized = feedback.trim();
+  const firstSentenceMatch = normalized.match(/^.*?[.!?](?:\s|$)/);
+  const summary = (firstSentenceMatch?.[0] ?? normalized).trim();
+
+  if (summary.length <= 140) {
+    return summary;
+  }
+
+  return `${summary.slice(0, 137).trimEnd()}...`;
+}
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
@@ -109,6 +171,8 @@ export default function App() {
   const [bossEvaluation, setBossEvaluation] = useState<BossEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showScenarioChart, setShowScenarioChart] = useState(false);
+  const [currentScenarioStepResults, setCurrentScenarioStepResults] = useState<ScenarioStepResult[]>([]);
+  const [completedScenarioRecaps, setCompletedScenarioRecaps] = useState<ScenarioRecap[]>([]);
 
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
@@ -140,6 +204,10 @@ export default function App() {
     setTrustScore(50);
     setSelectedChoiceId(null);
     setShowFeedback(false);
+    setBossInput('');
+    setBossEvaluation(null);
+    setCurrentScenarioStepResults([]);
+    setCompletedScenarioRecaps([]);
   };
 
   const handleChoice = (choiceId: string) => {
@@ -150,6 +218,21 @@ export default function App() {
     const choice = currentStep.choices.find(c => c.id === choiceId);
     if (choice) {
       setTrustScore(prev => Math.max(0, Math.min(100, prev + choice.scoreImpact)));
+      setCurrentScenarioStepResults((prev) => {
+        const remainingResults = prev.filter((result) => result.stepId !== currentStep.id);
+
+        return [
+          ...remainingResults,
+          {
+            stepId: currentStep.id,
+            question: currentStep.question,
+            selectedChoiceId: choice.id,
+            selectedChoiceText: choice.text,
+            wasCorrect: choice.isCorrect,
+            feedback: choice.feedback,
+          },
+        ];
+      });
     }
   };
 
@@ -180,6 +263,23 @@ export default function App() {
   };
 
   const nextScenario = () => {
+    const correctAnswers = currentScenarioStepResults.filter((result) => result.wasCorrect).length;
+    const recap: ScenarioRecap = {
+      scenarioId: currentScenario.id,
+      scenarioTitle: currentScenario.title,
+      totalSteps: currentScenario.steps.length,
+      correctAnswers,
+      takeaway: getScenarioTakeaway(currentScenario.id, currentScenarioStepResults, currentScenario.steps.length),
+      bossScore: bossEvaluation?.score,
+      bossOutcomeSummary: bossEvaluation
+        ? summarizeBossFeedback(bossEvaluation.feedback)
+        : 'Skipped due to connection issue.',
+      bossSkipped: !bossEvaluation,
+      bossNote: bossEvaluation ? undefined : 'Skipped due to connection issue.',
+    };
+
+    setCompletedScenarioRecaps((prev) => [...prev, recap]);
+    setCurrentScenarioStepResults([]);
     setBossEvaluation(null);
     setBossInput('');
     
@@ -575,7 +675,38 @@ export default function App() {
                      "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
                   </p>
                 </div>
-                
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {completedScenarioRecaps.map((recap) => (
+                  <div
+                    key={recap.scenarioId}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-left shadow-xl"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                      <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                        {recap.correctAnswers} / {recap.totalSteps} correct
+                      </span>
+                      <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1">
+                        {recap.bossSkipped ? 'Boss Skipped' : `Boss Score ${recap.bossScore}`}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-black tracking-tight text-white mb-3">{recap.scenarioTitle}</h3>
+                    <p className="text-slate-300 leading-relaxed mb-5">{recap.takeaway}</p>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                      <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-2">
+                        Boss Outcome
+                      </h4>
+                      <p className="text-slate-300">
+                        {recap.bossSkipped ? recap.bossNote : recap.bossOutcomeSummary}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-center">
                 <button 
                   onClick={startGame}
                   className="px-8 py-4 font-bold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors"

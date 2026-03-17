@@ -34,3 +34,24 @@ export interface BossEvaluation {
   feedback: string;
   stakeholderReaction: string;
 }
+
+export interface ScenarioStepResult {
+  stepId: string;
+  question: string;
+  selectedChoiceId: string;
+  selectedChoiceText: string;
+  wasCorrect: boolean;
+  feedback: string;
+}
+
+export interface ScenarioRecap {
+  scenarioId: string;
+  scenarioTitle: string;
+  totalSteps: number;
+  correctAnswers: number;
+  takeaway: string;
+  bossScore?: number;
+  bossOutcomeSummary: string;
+  bossSkipped?: boolean;
+  bossNote?: string;
+}
