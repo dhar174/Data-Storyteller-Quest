@@ -24,7 +24,7 @@ export async function evaluateBossResponse(
     });
 
     if (!response.ok) {
-      let message = `Request failed with status ${response.status}`;
+      let message = BOSS_EVALUATION_UNAVAILABLE_MESSAGE;
       try {
         const payload = await response.json() as { error?: string; fallback?: BossEvaluation };
         if (payload.error) {
@@ -33,6 +33,7 @@ export async function evaluateBossResponse(
       } catch {
         // Ignore parse errors and fall back to a generic message.
       }
+      console.error('Boss evaluation request failed', { status: response.status });
       throw new BossEvaluationRequestError(message);
     }
 
