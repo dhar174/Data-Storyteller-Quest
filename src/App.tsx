@@ -71,13 +71,17 @@ function ContextPanel({
   description,
   children,
   className,
+  headingLevel = 2,
 }: {
   badges: string[];
   title: string;
   description: string;
   children?: ReactNode;
   className?: string;
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 }) {
+  const HeadingTag = `h${headingLevel}` as keyof JSX.IntrinsicElements;
+
   return (
     <div className={cn("bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl", className)}>
       <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
@@ -87,7 +91,7 @@ function ContextPanel({
           </span>
         ))}
       </div>
-      <h2 className="text-3xl font-black tracking-tight text-white mb-2">{title}</h2>
+      <HeadingTag className="text-3xl font-black tracking-tight text-white mb-2">{title}</HeadingTag>
       <p className="text-slate-300 leading-relaxed max-w-3xl">{description}</p>
       {children ? <div className="mt-5">{children}</div> : null}
     </div>
