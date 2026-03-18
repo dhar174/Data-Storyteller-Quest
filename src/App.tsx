@@ -179,6 +179,33 @@ function summarizeBossFeedback(feedback: string) {
   return `${summary.slice(0, 137).trimEnd()}...`;
 }
 
+function getSkillLabel(stepType: ScenarioStepResult['stepType']) {
+  return stepType === 'VISUALIZATION' ? 'visual framing' : 'narrative framing';
+}
+
+function getBossCoachingSummary(recaps: ScenarioRecap[]) {
+  const scoredRecaps = recaps.filter((recap) => typeof recap.bossScore === 'number');
+  const skippedCount = recaps.filter((recap) => recap.bossSkipped).length;
+
+  if (scoredRecaps.length === 0) {
+    return skippedCount > 0
+      ? 'Retry the boss prompts when you can—those answers are where you practice acknowledging concerns and landing on a recommendation.'
+      : 'Use the boss prompts to practice acknowledging the concern, naming the trade-off, and ending with a recommendation.';
+  }
+
+  const averageBossScore = scoredRecaps.reduce((sum, recap) => sum + (recap.bossScore ?? 0), 0) / scoredRecaps.length;
+
+  if (averageBossScore >= 75) {
+    return 'Your boss responses worked best when you balanced stakeholder concerns with a clear recommendation. Keep that structure.'
+  }
+
+  if (averageBossScore >= 50) {
+    return 'Your boss responses are on the right track. Push them further by naming the trade-off and ending with a firmer next step.'
+  }
+
+  return 'Focus your boss responses on empathy first, then tie the data to a concrete recommendation so the stakeholder knows what to do next.'
+}
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
@@ -203,6 +230,45 @@ export default function App() {
     hasRevealedAnalysis && currentStep?.revealedDataSummary
       ? currentStep.revealedDataSummary
       : currentStep?.dataSummary;
+  const allStepResults = completedScenarioRecaps.flatMap((recap) => recap.stepResults);
+  const missedStepResults = completedScenarioRecaps.flatMap((recap) =>
+    recap.stepResults
+      .filter((result) => !result.wasCorrect)
+      .map((result) => ({
+        ...result,
+        scenarioId: recap.scenarioId,
+        scenarioTitle: recap.scenarioTitle,
+      }))
+  );
+  const correctByStepType = allStepResults.reduce(
+    (totals, result) => {
+      if (result.wasCorrect) {
+        totals[result.stepType] += 1;
+      }
+
+      return totals;
+    },
+    { VISUALIZATION: 0, NARRATIVE: 0 }
+  );
+  const strongestSkillType =
+    correctByStepType.VISUALIZATION === correctByStepType.NARRATIVE
+      ? null
+      : correctByStepType.VISUALIZATION > correctByStepType.NARRATIVE
+        ? 'VISUALIZATION'
+        : 'NARRATIVE';
+  const perfectScenarioCount = completedScenarioRecaps.filter(
+    (recap) => recap.correctAnswers === recap.totalSteps
+  ).length;
+  const strongestSkillSummary = strongestSkillType
+    ? `Your best choices came in ${getSkillLabel(strongestSkillType)}. Keep leaning into that instinct when you shape the story.`
+    : perfectScenarioCount > 0
+      ? `You delivered a complete read on ${perfectScenarioCount} scenario${perfectScenarioCount === 1 ? '' : 's'}, balancing the chart choice and the narrative well.`
+      : 'You showed flashes of strong stakeholder judgment. The next step is making those good instincts feel more consistent across scenarios.';
+  const missedQuestionSummary =
+    missedStepResults.length > 0
+      ? `${missedStepResults.length} question${missedStepResults.length === 1 ? '' : 's'} tripped you up. Review the stronger answer choices below to tighten your next run.`
+      : 'You did not miss any questions. That means your recap is mostly about reinforcing what already worked.';
+  const bossCoachingSummary = getBossCoachingSummary(completedScenarioRecaps);
 
   useEffect(() => {
     if (gameState !== 'SCENARIO' || !currentStep?.chartData || !showFeedback) {
@@ -241,6 +307,7 @@ export default function App() {
     setShowFeedback(true);
     
     const choice = currentStep.choices.find(c => c.id === choiceId);
+    const correctChoice = currentStep.choices.find((candidate) => candidate.isCorrect);
     if (choice) {
       setTrustScore(prev => Math.max(0, Math.min(100, prev + choice.scoreImpact)));
       setCurrentScenarioStepResults((prev) => {
@@ -250,9 +317,11 @@ export default function App() {
           ...remainingResults,
           {
             stepId: currentStep.id,
+            stepType: currentStep.type,
             question: currentStep.question,
             selectedChoiceId: choice.id,
             selectedChoiceText: choice.text,
+            correctChoiceText: correctChoice?.text ?? choice.text,
             wasCorrect: choice.isCorrect,
             feedback: choice.feedback,
           },
@@ -311,6 +380,7 @@ export default function App() {
         : 'Skipped due to connection issue.',
       bossSkipped: !bossEvaluation,
       bossNote: bossEvaluation ? undefined : 'Skipped due to connection issue.',
+      stepResults: currentScenarioStepResults,
     };
 
     setCompletedScenarioRecaps((prev) => [...prev, recap]);
@@ -791,6 +861,23 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-emerald-500/20 bg-slate-900/90 p-5 text-left shadow-xl">
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-300 mb-3">What You Did Well</h3>
+                  <p className="text-slate-300 leading-relaxed">{strongestSkillSummary}</p>
+                </div>
+
+                <div className="rounded-2xl border border-amber-500/20 bg-slate-900/90 p-5 text-left shadow-xl">
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-amber-300 mb-3">Review Next</h3>
+                  <p className="text-slate-300 leading-relaxed">{missedQuestionSummary}</p>
+                </div>
+
+                <div className="rounded-2xl border border-indigo-500/20 bg-slate-900/90 p-5 text-left shadow-xl">
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-indigo-300 mb-3">Boss-Response Habit</h3>
+                  <p className="text-slate-300 leading-relaxed">{bossCoachingSummary}</p>
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 {completedScenarioRecaps.map((recap) => (
                   <div
@@ -808,9 +895,42 @@ export default function App() {
                     <h3 className="text-2xl font-black tracking-tight text-white mb-3">{recap.scenarioTitle}</h3>
                     <p className="text-slate-300 leading-relaxed mb-5">{recap.takeaway}</p>
 
+                    {recap.stepResults.some((result) => !result.wasCorrect) ? (
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-5">
+                        <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-amber-200 mb-3">
+                          Missed Questions
+                        </h4>
+                        <div className="space-y-4">
+                          {recap.stepResults
+                            .filter((result) => !result.wasCorrect)
+                            .map((result) => (
+                              <div key={result.stepId} className="space-y-2">
+                                <p className="text-sm font-semibold text-white">{result.question}</p>
+                                <p className="text-sm text-slate-300">
+                                  <span className="text-slate-500">You picked:</span> {result.selectedChoiceText}
+                                </p>
+                                <p className="text-sm text-emerald-300">
+                                  Better answer: {result.correctChoiceText}
+                                </p>
+                                <p className="text-sm text-slate-400">{result.feedback}</p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 mb-5">
+                        <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-200 mb-2">
+                          Strong Choices
+                        </h4>
+                        <p className="text-sm text-slate-300">
+                          You answered every question in this scenario correctly. That is the stakeholder-ready framing to repeat.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
                       <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-2">
-                        Boss Outcome
+                        Boss-Response Guidance
                       </h4>
                       <p className="text-slate-300">
                         {recap.bossSkipped ? recap.bossNote : recap.bossOutcomeSummary}
