@@ -12,7 +12,8 @@ export const SCENARIOS: Scenario[] = [
         id: 'step-1-viz',
         type: 'VISUALIZATION',
         context: 'You have the following data:\n- Campaign A: Cost $10,000, Acquired 500 users.\n- Campaign B: Cost $20,000, Acquired 800 users.',
-        dataSummary: 'Campaign A CPA: $20. Campaign B CPA: $25.',
+        dataSummary: 'Campaign A spent $10,000 to acquire 500 users. Campaign B spent $20,000 to acquire 800 users.',
+        revealedDataSummary: 'Campaign A acquired users more efficiently at $20 CPA versus $25 for Campaign B.',
         question: 'How do you visualize this data for the CMO?',
         choices: [
           {
@@ -46,8 +47,9 @@ export const SCENARIOS: Scenario[] = [
       {
         id: 'step-2-narrative',
         type: 'NARRATIVE',
-        context: 'Now that you have the right chart, you need a headline for your slide.',
-        dataSummary: 'Campaign A was more cost-effective.',
+        context: 'Now that you have a chart, you need a headline for your slide.',
+        dataSummary: 'Pick a headline that highlights the most decision-useful takeaway for the CMO.',
+        revealedDataSummary: 'Campaign A was more cost-effective.',
         question: 'What is the most effective headline?',
         choices: [
           {
@@ -86,8 +88,9 @@ export const SCENARIOS: Scenario[] = [
       {
         id: 'step-1-viz',
         type: 'VISUALIZATION',
-        context: 'You found that retention drops dramatically on Day 3, especially for users who never completed the onboarding tutorial.',
-        dataSummary: 'Day 3 retention drops sharply for users who skip onboarding.',
+        context: 'You’re looking at 5-day retention for users who completed onboarding versus those who skipped it, broken out by day and group.',
+        dataSummary: 'Retention by day (%), completed onboarding vs. skipped onboarding: Day 1 95 vs. 80, Day 2 90 vs. 60, Day 3 85 vs. 20, Day 4 82 vs. 15, Day 5 80 vs. 10.',
+        revealedDataSummary: 'Day 3 retention drops sharply for users who skip onboarding.',
         question: 'What is the best way to show how retention diverges after onboarding is skipped?',
         choices: [
           {
@@ -125,7 +128,8 @@ export const SCENARIOS: Scenario[] = [
         id: 'step-2-narrative',
         type: 'NARRATIVE',
         context: 'You need to present this finding to the product team.',
-        dataSummary: 'Onboarding completion is strongly correlated with retention.',
+        dataSummary: 'Choose a recommendation that turns the retention pattern into a clear product action.',
+        revealedDataSummary: 'Onboarding completion is strongly correlated with retention.',
         question: 'How do you frame your recommendation?',
         choices: [
           {

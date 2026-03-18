@@ -197,9 +197,13 @@ export default function App() {
   const totalScenarios = SCENARIOS.length;
   const totalStepsInScenario = currentScenario.steps.length;
   const hasRevealedAnalysis = showFeedback;
+  const currentDataSummary =
+    hasRevealedAnalysis && currentStep?.revealedDataSummary
+      ? currentStep.revealedDataSummary
+      : currentStep?.dataSummary;
 
   useEffect(() => {
-    if (gameState !== 'SCENARIO' || !currentStep?.chartData) {
+    if (gameState !== 'SCENARIO' || !currentStep?.chartData || !showFeedback) {
       setShowScenarioChart(false);
       return;
     }
@@ -213,7 +217,7 @@ export default function App() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [currentStep?.id, currentStep?.chartData, gameState]);
+  }, [currentStep?.id, currentStep?.chartData, gameState, showFeedback]);
 
   const startGame = () => {
     setGameState('SCENARIO');
@@ -451,9 +455,9 @@ export default function App() {
 
                 <div className="bg-slate-950 rounded-xl p-4 sm:p-6 border border-slate-800 mb-8">
                   <h3 className="text-sm font-mono text-slate-500 mb-4 uppercase tracking-wider">Data Summary</h3>
-                  <p className="font-medium text-indigo-300 mb-6">{currentStep.dataSummary}</p>
+                  <p className="font-medium text-indigo-300 mb-6">{currentDataSummary}</p>
                   
-                  {!showScenarioChart && currentStep.chartData && (
+                  {showFeedback && !showScenarioChart && currentStep.chartData && (
                     <div className="h-56 sm:h-64 w-full mt-4 rounded-lg border border-slate-800/80 bg-slate-900/40" />
                   )}
 

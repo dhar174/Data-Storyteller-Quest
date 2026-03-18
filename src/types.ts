@@ -13,6 +13,7 @@ export interface ScenarioStep {
   type: 'VISUALIZATION' | 'NARRATIVE';
   context: string;
   dataSummary: string;
+  revealedDataSummary?: string;
   question: string;
   choices: Choice[];
   chartData?: any[];
