@@ -184,7 +184,9 @@ function getSkillLabel(stepType: ScenarioStepResult['stepType']) {
 }
 
 function getBossCoachingSummary(recaps: ScenarioRecap[]) {
-  const scoredRecaps = recaps.filter((recap) => typeof recap.bossScore === 'number');
+  const scoredRecaps = recaps.filter(
+    (recap): recap is ScenarioRecap & { bossScore: number } => typeof recap.bossScore === 'number'
+  );
   const skippedCount = recaps.filter((recap) => recap.bossSkipped).length;
 
   if (scoredRecaps.length === 0) {
@@ -193,17 +195,17 @@ function getBossCoachingSummary(recaps: ScenarioRecap[]) {
       : 'Use the boss prompts to practice acknowledging the concern, naming the trade-off, and ending with a recommendation.';
   }
 
-  const averageBossScore = scoredRecaps.reduce((sum, recap) => sum + (recap.bossScore ?? 0), 0) / scoredRecaps.length;
+  const averageBossScore = scoredRecaps.reduce((sum, recap) => sum + recap.bossScore, 0) / scoredRecaps.length;
 
   if (averageBossScore >= 75) {
-    return 'Your boss responses worked best when you balanced stakeholder concerns with a clear recommendation. Keep that structure.'
+    return 'Your boss responses worked best when you balanced stakeholder concerns with a clear recommendation. Keep that structure.';
   }
 
   if (averageBossScore >= 50) {
-    return 'Your boss responses are on the right track. Push them further by naming the trade-off and ending with a firmer next step.'
+    return 'Your boss responses are on the right track. Push them further by naming the trade-off and ending with a firmer next step.';
   }
 
-  return 'Focus your boss responses on empathy first, then tie the data to a concrete recommendation so the stakeholder knows what to do next.'
+  return 'Focus your boss responses on empathy first, then tie the data to a concrete recommendation so the stakeholder knows what to do next.';
 }
 
 export default function App() {
@@ -242,7 +244,7 @@ export default function App() {
   );
   const correctByStepType = allStepResults.reduce(
     (totals, result) => {
-      if (result.wasCorrect) {
+      if (result.wasCorrect && (result.stepType === 'VISUALIZATION' || result.stepType === 'NARRATIVE')) {
         totals[result.stepType] += 1;
       }
 
@@ -321,7 +323,7 @@ export default function App() {
             question: currentStep.question,
             selectedChoiceId: choice.id,
             selectedChoiceText: choice.text,
-            correctChoiceText: correctChoice?.text ?? choice.text,
+            correctChoiceText: correctChoice?.text ?? 'No recommended answer available.',
             wasCorrect: choice.isCorrect,
             feedback: choice.feedback,
           },
