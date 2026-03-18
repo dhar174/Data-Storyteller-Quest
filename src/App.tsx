@@ -3,7 +3,7 @@ import { GameState, BossEvaluation, ScenarioStepResult, ScenarioRecap } from './
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { AlertCircle, ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -466,7 +466,8 @@ export default function App() {
                   {showScenarioChart && currentStep.chartData && currentStep.chartType === 'BAR' && (
                     <ChartFrame>
                       {({ width, height }) => (
-                        <BarChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                        <BarChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: 48, bottom: 8, left: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                           <XAxis
                             dataKey="name"
                             stroke="#64748b"
@@ -475,19 +476,32 @@ export default function App() {
                             axisLine={{ stroke: '#334155' }}
                           />
                           <YAxis
-                            stroke="#64748b"
-                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            yAxisId="cpa"
+                            orientation="left"
+                            stroke="#6366f1"
+                            tick={{ fill: '#6366f1', fontSize: 12 }}
                             tickLine={false}
-                            axisLine={{ stroke: '#334155' }}
+                            axisLine={{ stroke: '#6366f1' }}
                             width={44}
+                            label={{ value: 'CPA ($)', angle: -90, position: 'insideLeft', fill: '#6366f1', fontSize: 11, dy: 30 }}
+                          />
+                          <YAxis
+                            yAxisId="users"
+                            orientation="right"
+                            stroke="#ec4899"
+                            tick={{ fill: '#ec4899', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#ec4899' }}
+                            width={44}
+                            label={{ value: 'Users', angle: 90, position: 'insideRight', fill: '#ec4899', fontSize: 11, dy: -20 }}
                           />
                           <Tooltip 
                             contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
                             itemStyle={{ color: '#e2e8f0' }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
-                          <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                          <Bar yAxisId="cpa" dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                          <Bar yAxisId="users" dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       )}
                     </ChartFrame>
