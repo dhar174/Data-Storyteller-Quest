@@ -47,7 +47,7 @@ export const SCENARIOS: Scenario[] = [
       {
         id: 'step-2-narrative',
         type: 'NARRATIVE',
-        context: 'Now that you have the right chart, you need a headline for your slide.',
+        context: 'Now that you have a chart, you need a headline for your slide.',
         dataSummary: 'Pick a headline that highlights the most decision-useful takeaway for the CMO.',
         revealedDataSummary: 'Campaign A was more cost-effective.',
         question: 'What is the most effective headline?',
