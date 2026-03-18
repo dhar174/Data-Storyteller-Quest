@@ -1,4 +1,4 @@
-import { type ElementType, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { GameState, BossEvaluation, ScenarioStepResult, ScenarioRecap } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
@@ -97,7 +97,7 @@ function ContextPanel({
   className?: string;
   headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 }) {
-  const HeadingTag = `h${headingLevel}` as ElementType;
+  const HeadingTag = `h${headingLevel}` as keyof JSX.IntrinsicElements;
 
   return (
     <div className={cn("bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl", className)}>
