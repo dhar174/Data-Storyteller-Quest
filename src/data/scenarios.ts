@@ -88,7 +88,7 @@ export const SCENARIOS: Scenario[] = [
       {
         id: 'step-1-viz',
         type: 'VISUALIZATION',
-        context: 'You found that retention drops dramatically on Day 3, especially for users who never completed the onboarding tutorial.',
+        context: 'You’re looking at 5-day retention for users who completed onboarding versus those who skipped it, broken out by day and group.',
         dataSummary: 'Retention by day (%), completed onboarding vs. skipped onboarding: Day 1 95 vs. 80, Day 2 90 vs. 60, Day 3 85 vs. 20, Day 4 82 vs. 15, Day 5 80 vs. 10.',
         revealedDataSummary: 'Day 3 retention drops sharply for users who skip onboarding.',
         question: 'What is the best way to show how retention diverges after onboarding is skipped?',
