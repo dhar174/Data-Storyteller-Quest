@@ -82,6 +82,8 @@ function ChartFrame({ children }: { children: (size: { width: number; height: nu
   );
 }
 
+type HeadingTag = `h${1 | 2 | 3 | 4 | 5 | 6}`;
+
 function ContextPanel({
   badges,
   title,
@@ -97,7 +99,7 @@ function ContextPanel({
   className?: string;
   headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 }) {
-  const HeadingTag = `h${headingLevel}` as keyof JSX.IntrinsicElements;
+  const HeadingTag = `h${headingLevel}` as HeadingTag;
 
   return (
     <div className={cn("bg-slate-900/80 rounded-2xl p-6 border border-slate-800 shadow-xl", className)}>
