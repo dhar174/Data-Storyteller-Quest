@@ -233,14 +233,9 @@ export default function App() {
       ? currentStep.revealedDataSummary
       : currentStep?.dataSummary;
   const allStepResults = completedScenarioRecaps.flatMap((recap) => recap.stepResults);
-  const missedStepResults = completedScenarioRecaps.flatMap((recap) =>
-    recap.stepResults
-      .filter((result) => !result.wasCorrect)
-      .map((result) => ({
-        ...result,
-        scenarioId: recap.scenarioId,
-        scenarioTitle: recap.scenarioTitle,
-      }))
+  const missedStepCount = completedScenarioRecaps.reduce(
+    (count, recap) => count + recap.stepResults.filter((result) => !result.wasCorrect).length,
+    0
   );
   const correctByStepType = allStepResults.reduce(
     (totals, result) => {
@@ -267,8 +262,8 @@ export default function App() {
       ? `You delivered a complete read on ${perfectScenarioCount} scenario${perfectScenarioCount === 1 ? '' : 's'}, balancing the chart choice and the narrative well.`
       : 'You showed flashes of strong stakeholder judgment. The next step is making those good instincts feel more consistent across scenarios.';
   const missedQuestionSummary =
-    missedStepResults.length > 0
-      ? `${missedStepResults.length} question${missedStepResults.length === 1 ? '' : 's'} tripped you up. Review the stronger answer choices below to tighten your next run.`
+    missedStepCount > 0
+      ? `${missedStepCount} question${missedStepCount === 1 ? '' : 's'} tripped you up. Review the stronger answer choices below to tighten your next run.`
       : 'You did not miss any questions. That means your recap is mostly about reinforcing what already worked.';
   const bossCoachingSummary = getBossCoachingSummary(completedScenarioRecaps);
 
