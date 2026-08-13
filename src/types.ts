@@ -38,9 +38,11 @@ export interface BossEvaluation {
 
 export interface ScenarioStepResult {
   stepId: string;
+  stepType: ScenarioStep['type'];
   question: string;
   selectedChoiceId: string;
   selectedChoiceText: string;
+  correctChoiceText: string;
   wasCorrect: boolean;
   feedback: string;
 }
@@ -55,4 +57,5 @@ export interface ScenarioRecap {
   bossOutcomeSummary: string;
   bossSkipped?: boolean;
   bossNote?: string;
+  stepResults: ScenarioStepResult[];
 }
