@@ -121,7 +121,39 @@ Optional override:
 
 ### 4) Rollback
 
-If a new revision is bad, route traffic back to the previous revision:
+If a guarded revision is bad, disable evaluations first. Never route traffic to an old unguarded image with a newly funded credential. Only roll back to a revision whose image, credential and evaluation policy have been reviewed together:
 ```bash
 gcloud run services update-traffic data-storyteller-quest --region us-east1 --to-revisions PREVIOUS_REVISION=100 --project YOUR_PROJECT_ID
 ```
+
+## Education regression checks (no model calls)
+
+The public-preserving API guardrails, shared-budget setup and activation gates are
+documented in [Public evaluation guardrails](docs/public-evaluation-guardrails.md).
+Run `npm run test:server` for the mocked route and cross-instance admission tests.
+
+Run `npm run test:education`, `npm run lint`, and `npm run build`.
+The education tests cover the Day 3 narrative against its chart data and final
+assessment coverage, including skipped, invalid, missing, and duplicate scores.
+
+For local UI checks, start `node tests/local-evaluation-fixture.mjs` in one
+terminal. In a second terminal, set `VITE_API_PROXY_TARGET` to
+`http://127.0.0.1:18081`, then run
+`npm run dev -- --host 127.0.0.1 --port 13000 --strictPort`.
+Open `http://127.0.0.1:13000`. Do not start the production API server for this
+check. The fixture binds only to loopback and never calls Gemini.
+
+- A response containing `[scored]` returns a fixed score of 85.
+- Any other response returns an evaluation-unavailable error for testing the
+  **Continue Without Score** flow.
+- Complete both scenarios after skipping one or both boss evaluations. The
+  result must say **Practice Complete**, **Assessment incomplete**, and
+  **Provisional Trust Score**, even when the trust score is 100%.
+- Complete both boss evaluations successfully to verify **Simulation Complete**
+  and **Final Trust Score**.
+- Check the marketing chart at 320px, 375px, and desktop widths. Narrow chart
+  containers show CPA in dollars only; user totals remain in the scenario
+  context. Wider containers show CPA and Users on separately labeled axes.
+
+The desktop dual-axis change builds on PR #31. This local implementation also
+adds the narrow-container CPA-only layout to keep both campaign labels readable.

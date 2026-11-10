@@ -2,8 +2,9 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { GameState, BossEvaluation, ScenarioStepResult, ScenarioRecap } from './types';
 import { SCENARIOS } from './data/scenarios';
 import { evaluateBossResponse } from './services/geminiService';
+import { getJourneySummary } from './lib/journeySummary';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { AlertCircle, ArrowRight, CheckCircle, XCircle, Trophy, Play, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -197,6 +198,7 @@ export default function App() {
   const currentScenario = SCENARIOS[currentScenarioIndex];
   const currentStep = currentScenario?.steps[currentStepIndex];
   const totalScenarios = SCENARIOS.length;
+  const journeySummary = getJourneySummary(completedScenarioRecaps, totalScenarios, trustScore);
   const totalStepsInScenario = currentScenario.steps.length;
   const hasRevealedAnalysis = showFeedback;
   const currentDataSummary =
@@ -279,8 +281,7 @@ export default function App() {
 
     try {
       const evaluation = await evaluateBossResponse(
-        currentScenario.stakeholderRole,
-        currentScenario.bossQuestion,
+        currentScenario.id,
         bossInput
       );
 
@@ -308,9 +309,9 @@ export default function App() {
       bossScore: bossEvaluation?.score,
       bossOutcomeSummary: bossEvaluation
         ? summarizeBossFeedback(bossEvaluation.feedback)
-        : 'Skipped due to connection issue.',
+        : 'Evaluation unavailable; continued without a score.',
       bossSkipped: !bossEvaluation,
-      bossNote: bossEvaluation ? undefined : 'Skipped due to connection issue.',
+      bossNote: bossEvaluation ? undefined : 'Evaluation unavailable; continued without a score.',
     };
 
     setCompletedScenarioRecaps((prev) => [...prev, recap]);
@@ -352,7 +353,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">
-      <div className="max-w-4xl mx-auto p-6 pt-12">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 pt-12">
         
         <AnimatePresence mode="wait">
           {gameState === 'MENU' && (
@@ -440,7 +441,7 @@ export default function App() {
                 description={currentScenario.description}
               />
               
-              <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-xl">
+              <div className="bg-slate-900 rounded-2xl p-4 sm:p-8 border border-slate-800 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xl">
                     {currentScenario.stakeholder.charAt(0)}
@@ -466,28 +467,44 @@ export default function App() {
                   {showScenarioChart && currentStep.chartData && currentStep.chartType === 'BAR' && (
                     <ChartFrame>
                       {({ width, height }) => (
-                        <BarChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                        <BarChart data={currentStep.chartData} width={width} height={height} margin={{ top: 8, right: width < 400 ? 8 : 48, bottom: 8, left: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                           <XAxis
                             dataKey="name"
+                            interval={0}
                             stroke="#64748b"
                             tick={{ fill: '#94a3b8', fontSize: 12 }}
                             tickLine={false}
                             axisLine={{ stroke: '#334155' }}
                           />
                           <YAxis
-                            stroke="#64748b"
-                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            yAxisId="cpa"
+                            orientation="left"
+                            stroke="#6366f1"
+                            tick={{ fill: '#6366f1', fontSize: 12 }}
                             tickLine={false}
-                            axisLine={{ stroke: '#334155' }}
+                            axisLine={{ stroke: '#6366f1' }}
                             width={44}
+                            tickFormatter={(value) => `$${value}`}
+                            label={width < 400 ? undefined : { value: 'CPA ($)', angle: -90, position: 'insideLeft', fill: '#6366f1', fontSize: 11, dy: 30 }}
                           />
+                          {width >= 400 && <YAxis
+                            yAxisId="users"
+                            orientation="right"
+                            stroke="#ec4899"
+                            tick={{ fill: '#ec4899', fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#ec4899' }}
+                            width={44}
+                            label={{ value: 'Users', angle: 90, position: 'insideRight', fill: '#ec4899', fontSize: 11, dy: -20 }}
+                          />}
                           <Tooltip 
                             contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
                             itemStyle={{ color: '#e2e8f0' }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
-                          <Bar dataKey="CPA" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                          <Bar yAxisId="cpa" dataKey="CPA" name="CPA ($)" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                          {width >= 400 && <Bar yAxisId="users" dataKey="Users" fill="#ec4899" radius={[4, 4, 0, 0]} />}
                         </BarChart>
                       )}
                     </ChartFrame>
@@ -646,6 +663,7 @@ export default function App() {
                   <div className="space-y-4">
                     <label className="block text-sm font-mono text-slate-400 uppercase tracking-wider">Your Response</label>
                     <textarea
+                      maxLength={2000}
                       value={bossInput}
                       onChange={(e) => {
                         setBossInput(e.target.value);
@@ -757,8 +775,8 @@ export default function App() {
             >
               <ContextPanel
                 badges={[`Completed ${totalScenarios} of ${totalScenarios} scenarios`, 'Journey Summary']}
-                title="Simulation Complete"
-                description="You've successfully navigated the treacherous waters of stakeholder communication."
+                title={journeySummary.title}
+                description={journeySummary.description}
                 className="text-left"
               >
                 <div className="flex flex-wrap gap-2">
@@ -779,14 +797,15 @@ export default function App() {
                 </div>
 
                 <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 w-full max-w-md">
-                  <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">Final Trust Score</h3>
+                  <h3 className="text-sm font-mono text-slate-500 uppercase tracking-wider mb-2">{journeySummary.scoreLabel}</h3>
                   <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
                     {trustScore}%
                   </div>
                   <p className="text-slate-300">
-                    {trustScore >= 80 ? "Outstanding! You are a master data storyteller. Stakeholders trust your insights implicitly." :
-                     trustScore >= 50 ? "Good job. You have a solid foundation, but there's room to improve your narrative framing." :
-                     "You survived, but trust is low. Remember to focus on actionable insights and empathy for the stakeholder's goals."}
+                    {journeySummary.feedback}
+                  </p>
+                  <p className="mt-4 text-sm text-slate-400">
+                    Boss evaluations: {journeySummary.assessedCount} of {totalScenarios} scored; {journeySummary.skippedCount} skipped.
                   </p>
                 </div>
               </div>

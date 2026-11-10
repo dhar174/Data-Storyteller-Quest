@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "start": "node server/index.js",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:education": "node --import tsx --test src/lib/journeySummary.test.ts src/data/scenarios.test.ts",
+    "test:server": "node --test server/*.test.js"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

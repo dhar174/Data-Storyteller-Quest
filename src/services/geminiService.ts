@@ -6,8 +6,7 @@ const BOSS_EVALUATION_UNAVAILABLE_MESSAGE =
 class BossEvaluationRequestError extends Error {}
 
 export async function evaluateBossResponse(
-  stakeholderRole: string,
-  question: string,
+  scenarioId: string,
   userResponse: string
 ): Promise<BossEvaluation> {
   try {
@@ -17,8 +16,7 @@ export async function evaluateBossResponse(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stakeholderRole,
-        question,
+        scenarioId,
         userResponse,
       }),
     });
