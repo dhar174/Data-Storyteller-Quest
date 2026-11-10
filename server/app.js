@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { GoogleGenAI } from '@google/genai';
+import { createEvaluationProvider } from './gemini-provider.js';
 import {
   MODEL, SYSTEM_INSTRUCTION, RESPONSE_JSON_SCHEMA, MAX_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
   EvaluationPolicyError, validateEvaluationRequest, buildEvaluationContents,
@@ -41,16 +41,19 @@ export function createApp({ env = process.env, admission, ai, logger = console, 
   app.post('/api/evaluate-boss-response', async (req, res) => {
     const requestId = randomUUID();
     let scenarioId;
+    let stage = 'validation';
     try {
       if (!req.is('application/json')) throw new EvaluationPolicyError('INVALID_CONTENT_TYPE', 415);
       const input = validateEvaluationRequest(req.body);
       scenarioId = input.scenarioId;
       if (configError) throw new EvaluationPolicyError('EVALUATION_NOT_CONFIGURED', 503);
+      stage = 'admission';
       const reservation = await bounded(timeouts.admission, (signal) => admission.reserve({ app: APP_ID, requestId, policy, signal }));
       if (reservation?.admitted !== true) throw new EvaluationPolicyError('EVALUATION_LIMIT_REACHED', 429);
 
       // No caller-controlled model, upstream URL, prompts, tools or retry options.
-      ai ??= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY, httpOptions: { retryOptions: { attempts: 1 } } });
+      stage = 'token_count';
+      ai ??= createEvaluationProvider({ apiKey: env.GEMINI_API_KEY });
       const contents = buildEvaluationContents(input);
       const tokenCount = await bounded(timeouts.count, (signal) => ai.models.countTokens({
         model: MODEL, contents,
@@ -59,6 +62,7 @@ export function createApp({ env = process.env, admission, ai, logger = console, 
       if (!Number.isInteger(tokenCount?.totalTokens) || tokenCount.totalTokens < 1) throw new EvaluationPolicyError('EVALUATION_INVALID_RESPONSE', 502);
       if (tokenCount.totalTokens > MAX_INPUT_TOKENS) throw new EvaluationPolicyError('EVALUATION_INPUT_TOO_LARGE', 413);
 
+      stage = 'generation';
       const response = await bounded(timeouts.generation, (signal) => ai.models.generateContent({
         model: MODEL, contents,
         config: {
@@ -70,6 +74,7 @@ export function createApp({ env = process.env, admission, ai, logger = console, 
           httpOptions: { timeout: timeouts.generation, retryOptions: { attempts: 1 } },
         },
       }));
+      stage = 'response_validation';
       const evaluation = validateEvaluationResult(response.text);
       // Release only a completed lease, never the irreversible spend reservation.
       try { await bounded(timeouts.complete, (signal) => admission.complete({ app: APP_ID, requestId, signal })); }
@@ -83,7 +88,7 @@ export function createApp({ env = process.env, admission, ai, logger = console, 
       const quotaError = admissionError && ['rate_limit', 'daily_limit', 'budget_limit', 'concurrency_limit', 'ledger_capacity'].includes(error.code);
       const code = policyError ? error.code : quotaError ? 'EVALUATION_LIMIT_REACHED' : admissionError ? 'EVALUATION_UNAVAILABLE' : mapped.code;
       const status = policyError ? error.status : quotaError ? 429 : 503;
-      logger.warn(JSON.stringify({ event: 'boss_evaluation_failed', requestId, scenarioId, code, upstreamStatus: admissionError ? undefined : mapped.upstreamStatus }));
+      logger.warn(JSON.stringify({ event: 'boss_evaluation_failed', requestId, scenarioId, stage, code, upstreamStatus: admissionError ? undefined : mapped.upstreamStatus }));
       const messages = {
         INVALID_EVALUATION_REQUEST: 'Choose a supported scenario and enter a response of at most 2,000 characters.',
         INVALID_CONTENT_TYPE: 'Send a JSON evaluation request.',
