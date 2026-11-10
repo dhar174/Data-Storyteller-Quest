@@ -167,3 +167,21 @@ References:
 - https://docs.cloud.google.com/firestore/native/docs/security/iam
 - https://firebase.google.com/docs/firestore/security/iam#required_permissions_for_api_methods
 - https://cloud.google.com/firestore/docs/manage-databases#configure_per-database_access_permissions
+
+### Token-count SDK compatibility
+
+The locked Gemini SDK rejects `config.systemInstruction` in its `countTokens`
+converter. The server therefore uses the documented REST `generateContentRequest`
+form at the fixed Gemini endpoint, including the exact normalized system instruction
+and contents used by generation. This request is bounded, has no retries and rejects
+redirects. Generation still uses the installed SDK. An offline regression exercises
+both paths with mocked network responses, rather than replacing the SDK methods.
+
+The provider count covers contents and system instruction, not output/thinking or
+all schema/configuration overhead. The $0.02 per-attempt reservation includes margin
+over the reviewed maximum input/output estimate; it is an application allowance,
+not a guarantee of the overall invoice. Cloud Run/Firestore and other project usage
+are separate. No failed attempt is refunded, including local SDK errors.
+
+References: https://ai.google.dev/api/tokens and
+https://discuss.ai.google.dev/t/gemini-api-counttokens/188451 .
