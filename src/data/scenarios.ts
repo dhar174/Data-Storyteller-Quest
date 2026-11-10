@@ -134,9 +134,9 @@ export const SCENARIOS: Scenario[] = [
         choices: [
           {
             id: 'c2-a',
-            text: '"Users who skip onboarding are 3x more likely to churn by Day 3. We should test making onboarding mandatory or more engaging."',
+            text: '"By Day 3, retention is 20% for users who skipped onboarding, versus 85% for those who completed it. We should test making onboarding more engaging."',
             isCorrect: true,
-            feedback: 'Excellent. You stated the insight clearly and provided a concrete, testable recommendation.',
+            feedback: 'Excellent. You used the observed retention rates and proposed a test. The association does not prove that skipping onboarding caused the difference.',
             scoreImpact: 20,
           },
           {
